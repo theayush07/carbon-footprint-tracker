@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { Car, Zap, UtensilsCrossed, Trash2, TrendingUp, Lightbulb, Download } from "lucide-react"
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts"
+import jsPDF from "jspdf"
 
 interface Calculation {
   id: string
@@ -40,26 +41,172 @@ export function ResultsDisplay({ calculation, tips }: { calculation: Calculation
   ]
 
   const handleDownload = () => {
-    const data = {
-      date: new Date(calculation.calculation_date).toLocaleDateString(),
-      total_emissions_kg: calculation.total_emissions,
-      breakdown: {
-        transport: calculation.transport_emissions,
-        energy: calculation.energy_emissions,
-        food: calculation.food_emissions,
-        waste: calculation.waste_emissions,
-      },
+    const doc = new jsPDF()
+    const pageWidth = doc.internal.pageSize.getWidth()
+    let yPosition = 20
+
+    // Header
+    doc.setFontSize(22)
+    doc.setTextColor(16, 120, 79) // Emerald-700
+    doc.text("Carbon Footprint Report", pageWidth / 2, yPosition, { align: "center" })
+
+    yPosition += 10
+    doc.setFontSize(10)
+    doc.setTextColor(100, 100, 100)
+    doc.text(`Generated on ${new Date(calculation.calculation_date).toLocaleDateString()}`, pageWidth / 2, yPosition, {
+      align: "center",
+    })
+
+    // Total Emissions
+    yPosition += 20
+    doc.setFontSize(16)
+    doc.setTextColor(0, 0, 0)
+    doc.text("Total Carbon Emissions", 20, yPosition)
+
+    yPosition += 10
+    doc.setFontSize(32)
+    doc.setTextColor(16, 120, 79)
+    doc.text(`${calculation.total_emissions.toFixed(2)} kg CO₂e`, 20, yPosition)
+
+    yPosition += 8
+    doc.setFontSize(9)
+    doc.setTextColor(100, 100, 100)
+    doc.text("Average person produces ~10 tons per year (27 kg/day)", 20, yPosition)
+
+    // Emissions Breakdown
+    yPosition += 20
+    doc.setFontSize(14)
+    doc.setTextColor(0, 0, 0)
+    doc.text("Emissions Breakdown by Category", 20, yPosition)
+
+    yPosition += 10
+    doc.setFontSize(10)
+
+    // Transport
+    doc.setTextColor(245, 158, 11) // Amber
+    doc.text("● ", 20, yPosition)
+    doc.setTextColor(0, 0, 0)
+    doc.text(`Transport: ${calculation.transport_emissions.toFixed(2)} kg CO₂e`, 25, yPosition)
+    const transportPercent = ((calculation.transport_emissions / calculation.total_emissions) * 100).toFixed(1)
+    doc.setTextColor(100, 100, 100)
+    doc.text(`(${transportPercent}%)`, 90, yPosition)
+
+    yPosition += 8
+    // Energy
+    doc.setTextColor(59, 130, 246) // Blue
+    doc.text("● ", 20, yPosition)
+    doc.setTextColor(0, 0, 0)
+    doc.text(`Energy: ${calculation.energy_emissions.toFixed(2)} kg CO₂e`, 25, yPosition)
+    const energyPercent = ((calculation.energy_emissions / calculation.total_emissions) * 100).toFixed(1)
+    doc.setTextColor(100, 100, 100)
+    doc.text(`(${energyPercent}%)`, 90, yPosition)
+
+    yPosition += 8
+    // Food
+    doc.setTextColor(16, 185, 129) // Emerald
+    doc.text("● ", 20, yPosition)
+    doc.setTextColor(0, 0, 0)
+    doc.text(`Food: ${calculation.food_emissions.toFixed(2)} kg CO₂e`, 25, yPosition)
+    const foodPercent = ((calculation.food_emissions / calculation.total_emissions) * 100).toFixed(1)
+    doc.setTextColor(100, 100, 100)
+    doc.text(`(${foodPercent}%)`, 90, yPosition)
+
+    yPosition += 8
+    // Waste
+    doc.setTextColor(139, 92, 246) // Purple
+    doc.text("● ", 20, yPosition)
+    doc.setTextColor(0, 0, 0)
+    doc.text(`Waste: ${calculation.waste_emissions.toFixed(2)} kg CO₂e`, 25, yPosition)
+    const wastePercent = ((calculation.waste_emissions / calculation.total_emissions) * 100).toFixed(1)
+    doc.setTextColor(100, 100, 100)
+    doc.text(`(${wastePercent}%)`, 90, yPosition)
+
+    // Category Details
+    yPosition += 15
+    doc.setFontSize(14)
+    doc.setTextColor(0, 0, 0)
+    doc.text("Detailed Category Breakdown", 20, yPosition)
+
+    const categories = [
+      { name: "Transport", value: calculation.transport_emissions, icon: "🚗" },
+      { name: "Energy", value: calculation.energy_emissions, icon: "⚡" },
+      { name: "Food", value: calculation.food_emissions, icon: "🍽️" },
+      { name: "Waste", value: calculation.waste_emissions, icon: "🗑️" },
+    ]
+
+    yPosition += 10
+    doc.setFontSize(10)
+    categories.forEach((cat) => {
+      if (cat.value > 0) {
+        doc.setTextColor(0, 0, 0)
+        doc.text(`${cat.icon} ${cat.name}:`, 20, yPosition)
+        doc.text(`${cat.value.toFixed(2)} kg CO₂e`, 60, yPosition)
+        yPosition += 7
+      }
+    })
+
+    // Reduction Tips
+    if (tips.length > 0) {
+      yPosition += 10
+
+      // Check if we need a new page
+      if (yPosition > 240) {
+        doc.addPage()
+        yPosition = 20
+      }
+
+      doc.setFontSize(14)
+      doc.setTextColor(0, 0, 0)
+      doc.text("💡 Reduction Tips", 20, yPosition)
+
+      yPosition += 10
+      doc.setFontSize(9)
+
+      tips.forEach((tip, index) => {
+        // Check if we need a new page for each tip
+        if (yPosition > 260) {
+          doc.addPage()
+          yPosition = 20
+        }
+
+        doc.setTextColor(0, 0, 0)
+        doc.setFont(undefined, "bold")
+        doc.text(`${index + 1}. ${tip.category.toUpperCase()}`, 20, yPosition)
+
+        yPosition += 6
+        doc.setFont(undefined, "normal")
+        const tipLines = doc.splitTextToSize(tip.tip_text, 170)
+        doc.text(tipLines, 25, yPosition)
+        yPosition += tipLines.length * 5
+
+        doc.setTextColor(100, 100, 100)
+        doc.text(`Difficulty: ${tip.difficulty_level}`, 25, yPosition)
+
+        if (tip.potential_savings_kg_co2) {
+          doc.setTextColor(16, 120, 79)
+          doc.text(`Potential savings: ${tip.potential_savings_kg_co2} kg CO₂/year`, 70, yPosition)
+        }
+
+        yPosition += 10
+      })
     }
 
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `carbon-footprint-${calculation.id}.json`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+    // Footer
+    const totalPages = doc.getNumberOfPages()
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i)
+      doc.setFontSize(8)
+      doc.setTextColor(150, 150, 150)
+      doc.text(
+        `Page ${i} of ${totalPages} | Carbon Footprint Tracker`,
+        pageWidth / 2,
+        doc.internal.pageSize.getHeight() - 10,
+        { align: "center" },
+      )
+    }
+
+    // Save the PDF
+    doc.save(`carbon-footprint-report-${calculation.id}.pdf`)
   }
 
   return (
