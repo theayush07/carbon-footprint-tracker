@@ -54,7 +54,7 @@
     "jsonwebtoken": "latest",
     "jspdf": "latest",
     "lucide-react": "^0.454.0",
-    "next": "16.0.0",
+    "next": "16.0.10",
     "next-themes": "latest",
     "node-gyp": "latest",
     "react": "19.2.0",
